@@ -14,7 +14,7 @@ fs.readFile('data.json', 'utf8', (err, data) => {
   }
 
   const jsonData = JSON.parse(data);
-
+  updateVoiceAccounts();
   // Function to display the menu
   function displayMenu() {
     console.log("\nChoose an option:");
@@ -94,6 +94,32 @@ fs.readFile('data.json', 'utf8', (err, data) => {
       // Return an error message if the format is invalid
       return "Invalid account number format.";
     }
+  }
+
+  function updateVoiceAccounts() {
+    // divide the total cost of the 5 voice accounts evenly between each account
+    const voicePlanTotals = jsonData.accounts
+      .filter(account => account.type === "Voice")
+      .map(account => account.plan);
+
+    const totalSum = voicePlanTotals.reduce((sum, total) => sum + total, 0);
+
+    const updatedPlanAmount = totalSum / 5;
+
+    jsonData.accounts.forEach((acct, i) => {
+      if (acct.type === "Voice") {
+        const thisAccount = jsonData.accounts[i];
+        const { plan, equipment, services } = thisAccount;
+
+        thisAccount.plan = updatedPlanAmount;
+        thisAccount.total = roundUpToDecimalPlace((plan + equipment + services), 2);
+      }
+    });
+  }
+
+  function roundUpToDecimalPlace(number, decimalPlaces) {
+    const factor = Math.pow(10, decimalPlaces);
+    return Math.ceil(number * factor) / factor;
   }
 
   displayMenu(); // Initial menu display
