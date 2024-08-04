@@ -1,6 +1,6 @@
 const fs = require('fs');
 const readline = require('readline');
-
+const { scottsLines, myLines, NinasLines, HaileysLines, MarandersLines } = require('./lines.js');
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -14,7 +14,6 @@ fs.readFile('data.json', 'utf8', (err, data) => {
   }
 
   const jsonData = JSON.parse(data);
-  updateVoiceAccounts();
   // Function to display the menu
   function displayMenu() {
     console.log("\nChoose an option:");
@@ -38,6 +37,7 @@ fs.readFile('data.json', 'utf8', (err, data) => {
           // Print the total for each account
           console.log("\nIndividual Totals:");
           jsonData.accounts.forEach(account => {
+            console.log(`Owner: ${account.owner}`);
             console.log(`Account: ${account.account}`);
             console.log(`Type: ${account.type}`);
             console.log(`Plan: $${account.plan}`);
@@ -122,5 +122,25 @@ fs.readFile('data.json', 'utf8', (err, data) => {
     return Math.ceil(number * factor) / factor;
   }
 
+  function addUsersToAccounts() {
+    jsonData.accounts.forEach((acct, i) => {
+      const mobileNumber = acct.account;
+
+      if (scottsLines.includes(mobileNumber)) {
+        jsonData.accounts[i].owner = "Scott";
+      } else if (myLines.includes(mobileNumber)) {
+        jsonData.accounts[i].owner = "Me";
+      } else if (NinasLines.includes(mobileNumber)) {
+        jsonData.accounts[i].owner = "Nina";
+      } else if (HaileysLines.includes(mobileNumber)) {
+        jsonData.accounts[i].owner = "Hailey";
+      } else if (MarandersLines.includes(mobileNumber)) {
+        jsonData.accounts[i].owner = "Maranda";
+      }
+    });
+  }
+
+  updateVoiceAccounts();
+  addUsersToAccounts();
   displayMenu(); // Initial menu display
 });
