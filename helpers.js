@@ -1,7 +1,6 @@
 const fs = require('fs');
 const readline = require('readline');
 const { user1, user2, user3, user4, lines } = require('./users.js');
-const { count } = require('console');
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -95,7 +94,9 @@ const displayMenu = jsonData => {
                     } else {
                         console.log("Phone number not found.");
                     }
-                    displayMenu(jsonData); // Prompt the user again
+                    setTimeout(() => {
+                        displayMenu(jsonData);
+                    }, 3000);
                 });
                 return; // Prevent rl.close() from being called immediately
 
@@ -111,7 +112,9 @@ const displayMenu = jsonData => {
                     totalAmountDue += line.total;
                 });
                 console.log(`Total Amount Due: $${roundToNearestPenny(totalAmountDue, 2)}`);
-                displayMenu(jsonData);
+                setTimeout(() => {
+                    displayMenu(jsonData);
+                }, 3000);
                 return;
 
             case '5':
@@ -123,7 +126,9 @@ const displayMenu = jsonData => {
                 console.log("Invalid choice.");
         }
 
-        displayMenu(jsonData); // Prompt the user again
+        setTimeout(() => {
+            displayMenu(jsonData);
+        }, 2000);
     });
 }
 
