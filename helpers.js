@@ -1,6 +1,7 @@
 const fs = require('fs');
 const readline = require('readline');
 const { user1, user2, user3, user4, lines } = require('./users.js');
+const { count } = require('console');
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -161,9 +162,8 @@ const updateVoiceAccounts = jsonData => {
     const voicePlanTotals = jsonData.lines
         .filter(line => line.type === "Voice")
         .map(line => line.plan);
-
     const totalSum = voicePlanTotals.reduce((sum, total) => sum + total, 0);
-    const updatedPlanAmount = roundToNearestPenny((roundToNearestPenny(totalSum, 2) + roundToNearestPenny(jsonData.account.amount, 2)) / 5, 2);
+    const updatedPlanAmount = roundToNearestPenny((roundToNearestPenny(totalSum, 2) + roundToNearestPenny(jsonData.account.amount, 2)) / voicePlanTotals.length, 2);
 
     jsonData.lines.forEach((line, i) => {
         if (line.type === "Voice") {
