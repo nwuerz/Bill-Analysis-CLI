@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { user1, user2, user3, user4, lines } = require('./users.js');
+const { users } = require('./users.js');
 
 const mapBillTextToJson = text => {
     const lines = text.split('\n').map(line => line.trim());
@@ -101,13 +101,13 @@ const displayMenu = (rl, jsonData) => {
             case '4':
                 let totalAmountDue = 0;
                 console.log("\nUser Totals:");
-                lines.forEach(line => {
-                    const total = roundToNearestPenny(line.total, 2);
-                    console.log(`Owner: ${line.name}`);
-                    console.log(`Lines: ${line.lines}`);
+                users.forEach(user => {
+                    const total = roundToNearestPenny(user.total, 2);
+                    console.log(`Owner: ${user.name}`);
+                    console.log(`Lines: ${user.lines}`);
                     console.log(`Total: $${total}`);
                     console.log("");
-                    totalAmountDue += line.total;
+                    totalAmountDue += user.total;
                 });
                 console.log(`Total Amount Due: $${roundToNearestPenny(totalAmountDue, 2)}`);
                 setTimeout(() => {
@@ -138,22 +138,11 @@ const updateJsonData = jsonData => {
     return jsonData
 }
 
-const addUsersToJsonData = jsonData => {
-    jsonData.lines.forEach((line, i) => {
-        const mobileNumber = line.account;
-
-        if (user1.lines.includes(mobileNumber)) {
-            jsonData.lines[i].owner = user1.name;
-        } else if (user2.lines.includes(mobileNumber)) {
-            jsonData.lines[i].owner = user2.name;
-        } else if (user3.lines.includes(mobileNumber)) {
-            jsonData.lines[i].owner = user3.name;
-        } else if (user4.lines.includes(mobileNumber)) {
-            jsonData.lines[i].owner = user4.name;
-        } else if (user5.lines.includes(mobileNumber)) {
-            jsonData.lines[i].owner = user5.name;
-        }
-    });
+const addUsersToJsonData = (jsonData, i) => {
+    jsonData.lines.forEach(line => {
+        const matchingUser = users.filter(user => user.lines.includes(line.account));
+        line.owner = matchingUser[0].name;
+    })
 }
 
 const handleFileReadError = err => {
@@ -182,10 +171,13 @@ const updateVoiceAccounts = jsonData => {
 }
 
 const calculateUserTotals = jsonData => {
-    jsonData.lines.forEach(acct => {
-        const { owner } = acct;
-        const line = lines.filter(line => line.name === owner);
-        line[0].total += acct.total;
+    jsonData.lines.forEach(line => {
+        const { owner } = line;
+        users.forEach(user => {
+            if (user.name === owner) {
+                user.total += line.total;
+            }
+        });
     })
 }
 
