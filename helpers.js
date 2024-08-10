@@ -1,10 +1,5 @@
 const fs = require('fs');
-const readline = require('readline');
 const { user1, user2, user3, user4, lines } = require('./users.js');
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
 
 const mapBillTextToJson = text => {
     const lines = text.split('\n').map(line => line.trim());
@@ -45,7 +40,7 @@ const mapBillTextToJson = text => {
     console.log('Data saved to data.json');
 }
 
-const displayMenu = jsonData => {
+const displayMenu = (rl, jsonData) => {
     console.log("\nChoose an option:");
     console.log("1. See bill summary");
     console.log("2. See all lines");
@@ -56,16 +51,17 @@ const displayMenu = jsonData => {
     rl.question("Enter your choice (1, 2, 3, 4, or 5): ", (choice) => {
         switch (choice) {
             case '1':
-                // Print the plan summary
                 console.log("\nPlan Summary:");
                 console.log(`Plan: $${jsonData.planSummary.plan}`);
                 console.log(`Equipment: $${jsonData.planSummary.equipment}`);
                 console.log(`Services: $${jsonData.planSummary.services}`);
                 console.log(`Total: $${jsonData.planSummary.total}`);
+                setTimeout(() => {
+                    displayMenu(rl, jsonData);
+                }, 3000);
                 break;
 
             case '2':
-                // Print the total for each account
                 console.log("\nIndividual Totals:");
                 jsonData.lines.forEach(line => {
                     console.log(`Owner: ${line.owner}`);
@@ -77,10 +73,12 @@ const displayMenu = jsonData => {
                     console.log(`Total: $${line.total}`);
                     console.log("");
                 });
+                setTimeout(() => {
+                    displayMenu(rl, jsonData);
+                }, 3000);
                 break;
 
             case '3':
-                // Ask for the specific account number
                 rl.question("Enter the account number: ", (input) => {
                     const phoneNumber = formatAccountNumber(input);
                     const line = jsonData.lines.find(line => line.account === phoneNumber);
@@ -95,16 +93,16 @@ const displayMenu = jsonData => {
                         console.log("Phone number not found.");
                     }
                     setTimeout(() => {
-                        displayMenu(jsonData);
+                        displayMenu(rl, jsonData);
                     }, 3000);
                 });
-                return; // Prevent rl.close() from being called immediately
+                break;
 
             case '4':
                 let totalAmountDue = 0;
                 console.log("\nUser Totals:");
                 lines.forEach(line => {
-                    const total = roundToNearestPenny(line.total, 2)
+                    const total = roundToNearestPenny(line.total, 2);
                     console.log(`Owner: ${line.name}`);
                     console.log(`Lines: ${line.lines}`);
                     console.log(`Total: $${total}`);
@@ -113,22 +111,22 @@ const displayMenu = jsonData => {
                 });
                 console.log(`Total Amount Due: $${roundToNearestPenny(totalAmountDue, 2)}`);
                 setTimeout(() => {
-                    displayMenu(jsonData);
+                    displayMenu(rl, jsonData);
                 }, 3000);
-                return;
+                break;
 
             case '5':
                 console.log("Exiting...");
                 rl.close();
-                return;
+                break;
 
             default:
                 console.log("Invalid choice.");
+                setTimeout(() => {
+                    displayMenu(rl, jsonData);
+                }, 3000);
+                break;
         }
-
-        setTimeout(() => {
-            displayMenu(jsonData);
-        }, 2000);
     });
 }
 
@@ -137,6 +135,7 @@ const updateJsonData = jsonData => {
     updateVoiceAccounts(jsonData);
     calculateDifferenceAndAddToScottsBillLOL(jsonData);
     calculateUserTotals(jsonData);
+    return jsonData
 }
 
 const addUsersToJsonData = jsonData => {
@@ -237,4 +236,35 @@ const calculateDifferenceAndAddToScottsBillLOL = jsonData => {
     }
 }
 
-module.exports = { mapBillTextToJson, displayMenu, updateJsonData, handleFileReadError };  
+const getMultilineInput = (rl, prompt) => {
+    return new Promise((resolve) => {
+        let lines = [];
+        console.log(prompt);
+        rl.on('line', (line) => {
+            if (line === '') { // If an empty line is entered, resolve the promise
+                const input = lines.join('\n');
+                resolve(input);
+            } else {
+                lines.push(line);
+            }
+        });
+    });
+}
+
+const getBillText = rl => {
+    return getMultilineInput(rl, 'Enter the text for the bill (end input with an empty line):')
+        .then(inputText => {
+            console.log('Captured inputText:', inputText);
+            return inputText;
+        })
+        .catch(err => {
+            console.error('Error processing input:', err);
+        });
+}
+
+const init = async () => {
+    const billText = await getBillText(rl);
+    return billText
+}
+
+module.exports = { mapBillTextToJson, displayMenu, updateJsonData, handleFileReadError, init, getMultilineInput };  
