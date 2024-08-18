@@ -1,32 +1,65 @@
 const fs = require('fs');
 const { users } = require('./users.js');
 
-const mapBillTextToJson = text => {
+let oneTimeChargesArePresent;
+let lateFee;
+
+const processText = inputText => {
+    let processedText = inputText.replace(/\)\s+/g, ')');
+
+    processedText = processedText.replace(/Mobile\s+Internet/g, 'MobileInternet');
+
+    let jsonObject = textToJson(processedText);
+
+    fs.writeFileSync('output.json', JSON.stringify(jsonObject, null, 2));
+}
+
+const textToJson = text => {
     const lines = text.split('\n').map(line => line.trim());
     const planSummary = {};
     const account = {};
     const lineDetails = [];
-
     lines.forEach(line => {
         const parts = line.split(/\s+/);
 
         if (parts[0] === 'Totals') {
+            oneTimeChargesArePresent = parts.length === 6 ? true : false;
+
             planSummary.plan = parseFloat(parts[1].replace('$', ''));
             planSummary.equipment = parseFloat(parts[2].replace('$', ''));
             planSummary.services = parseFloat(parts[3].replace('$', ''));
-            planSummary.total = parseFloat(parts[4].replace('$', ''));
+
+            if (oneTimeChargesArePresent) {
+                planSummary.oneTimeCharges = parseFloat(parts[4].replace('$', ''));
+                planSummary.total = parseFloat(parts[5].replace('$', ''));
+            } else {
+                planSummary.total = parseFloat(parts[4].replace('$', ''));
+            }
         } else if (parts[0] === 'Account') {
             account.amount = parseFloat(parts[1].replace('$', ''));
         } else {
-            const [accountNumber, type, plan, equipment, services, total] = parts;
-            lineDetails.push({
-                account: accountNumber,
-                type: type,
-                plan: parseFloat(plan.replace('$', '')),
-                equipment: equipment !== '-' ? parseFloat(equipment.replace('$', '')) : 0,
-                services: services !== '-' ? parseFloat(services.replace('$', '')) : 0,
-                total: parseFloat(total.replace('$', ''))
-            });
+            if (oneTimeChargesArePresent) {
+                const [accountNumber, type, plan, equipment, services, oneTimeCharges, total] = parts;
+                lineDetails.push({
+                    account: accountNumber,
+                    type: type,
+                    plan: parseFloat(plan.replace('$', '')),
+                    equipment: equipment !== '-' ? parseFloat(equipment.replace('$', '')) : 0,
+                    services: services !== '-' ? parseFloat(services.replace('$', '')) : 0,
+                    oneTimeCharges: oneTimeCharges !== '-' ? parseFloat(services.replace('$', '')) : 0,
+                    total: parseFloat(total.replace('$', ''))
+                });
+            } else {
+                const [accountNumber, type, plan, equipment, services, total] = parts;
+                lineDetails.push({
+                    account: accountNumber,
+                    type: type,
+                    plan: parseFloat(plan.replace('$', '')),
+                    equipment: equipment !== '-' ? parseFloat(equipment.replace('$', '')) : 0,
+                    services: services !== '-' ? parseFloat(services.replace('$', '')) : 0,
+                    total: parseFloat(total.replace('$', ''))
+                });
+            }
         }
     });
 
@@ -37,7 +70,7 @@ const mapBillTextToJson = text => {
     };
 
     fs.writeFileSync('data.json', JSON.stringify(jsonObject, null, 2));
-    console.log('Data saved to data.json');
+    console.log('Input processed successfully...');
 }
 
 const displayMenu = (rl, jsonData) => {
@@ -58,7 +91,7 @@ const displayMenu = (rl, jsonData) => {
                 console.log(`Total: $${jsonData.planSummary.total}`);
                 setTimeout(() => {
                     displayMenu(rl, jsonData);
-                }, 3000);
+                }, 2000);
                 break;
 
             case '2':
@@ -75,11 +108,11 @@ const displayMenu = (rl, jsonData) => {
                 });
                 setTimeout(() => {
                     displayMenu(rl, jsonData);
-                }, 3000);
+                }, 2000);
                 break;
 
             case '3':
-                rl.question("Enter the account number: ", (input) => {
+                rl.question("Enter the phone number: ", (input) => {
                     const phoneNumber = formatAccountNumber(input);
                     const line = jsonData.lines.find(line => line.account === phoneNumber);
                     if (line) {
@@ -94,7 +127,7 @@ const displayMenu = (rl, jsonData) => {
                     }
                     setTimeout(() => {
                         displayMenu(rl, jsonData);
-                    }, 3000);
+                    }, 2000);
                 });
                 break;
 
@@ -110,9 +143,12 @@ const displayMenu = (rl, jsonData) => {
                     totalAmountDue += user.total;
                 });
                 console.log(`Total Amount Due: $${roundToNearestPenny(totalAmountDue, 2)}`);
+                if (oneTimeChargesArePresent) {
+                    console.log(`Total Does Not Include the $${lateFee} late fee`);
+                }
                 setTimeout(() => {
                     displayMenu(rl, jsonData);
-                }, 3000);
+                }, 2000);
                 break;
 
             case '5':
@@ -124,7 +160,7 @@ const displayMenu = (rl, jsonData) => {
                 console.log("Invalid choice.");
                 setTimeout(() => {
                     displayMenu(rl, jsonData);
-                }, 3000);
+                }, 2000);
                 break;
         }
     });
@@ -138,7 +174,7 @@ const updateJsonData = jsonData => {
     return jsonData
 }
 
-const addUsersToJsonData = (jsonData, i) => {
+const addUsersToJsonData = jsonData => {
     jsonData.lines.forEach(line => {
         const matchingUser = users.filter(user => user.lines.includes(line.account));
         line.owner = matchingUser[0].name;
@@ -161,8 +197,7 @@ const updateVoiceAccounts = jsonData => {
     jsonData.lines.forEach((line, i) => {
         if (line.type === "Voice") {
             const thisAccount = jsonData.lines[i];
-            //refactor
-            const { plan, equipment, services } = thisAccount;
+            const { equipment, services } = thisAccount;
 
             thisAccount.plan = updatedPlanAmount;
             thisAccount.total = updatedPlanAmount + equipment + services;
@@ -181,7 +216,7 @@ const calculateUserTotals = jsonData => {
     })
 }
 
-const formatAccountNumber = (phoneNumber) => {
+const formatAccountNumber = phoneNumber => {
     // Define the regex pattern
     const pattern = /^(\d{3})(\d{3})(\d{4})$/;
 
@@ -197,7 +232,7 @@ const formatAccountNumber = (phoneNumber) => {
     }
 }
 
-const roundToNearestPenny = (amount) => {
+const roundToNearestPenny = amount => {
     const factor = 100; // factor for rounding to the nearest penny
     const thirdDecimalPlace = Math.floor((amount * 1000) % 10); // find the third decimal place
 
@@ -223,7 +258,14 @@ const calculateDifferenceAndAddToScottsBillLOL = jsonData => {
             scottsLine[0].plan += diff;
             scottsLine[0].total += diff;
         } else {
-            console.log(`$${diff} discrepency found in bill!!`)
+            if (oneTimeChargesArePresent) {
+                lateFee = diff;
+                setTimeout(() => {
+                    console.log(`$${diff} late fee found`);
+                }, 1000);
+            } else {
+                console.log(`$${diff} discrepency found in bill!!`);
+            }
         }
     }
 }
@@ -243,20 +285,23 @@ const getMultilineInput = (rl, prompt) => {
     });
 }
 
-const getBillText = rl => {
-    return getMultilineInput(rl, 'Enter the text for the bill (end input with an empty line):')
-        .then(inputText => {
-            console.log('Captured inputText:', inputText);
-            return inputText;
+const init = async rl => {
+    try {
+        const displayTimeout = lateFee === null ? 1000 : 2000;
+        const billText = await getMultilineInput(rl, 'Copy the "THIS BILL SUMMARY" section from the bill (on page 2) and paste it here, then press enter twice:');
+        processText(billText)
+
+        fs.readFile('data.json', 'utf8', (err, data) => {
+            if (err) handleFileReadError(err);
+            const jsonData = JSON.parse(data);
+            var updatedJsonData = updateJsonData(jsonData);
+            setTimeout(() => {
+                displayMenu(rl, updatedJsonData);
+            }, displayTimeout);
         })
-        .catch(err => {
-            console.error('Error processing input:', err);
-        });
+    } catch (error) {
+        console.log(error);
+    }
 }
 
-const init = async () => {
-    const billText = await getBillText(rl);
-    return billText
-}
-
-module.exports = { mapBillTextToJson, displayMenu, updateJsonData, handleFileReadError, init, getMultilineInput };  
+module.exports = { init };  
