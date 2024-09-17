@@ -2,7 +2,7 @@ const fs = require('fs');
 const { users } = require('./users.js');
 
 let oneTimeChargesArePresent;
-let lateFee;
+let additionalCharges;
 
 const processText = inputText => {
     let processedText = inputText.replace(/\)\s+/g, ')');
@@ -144,7 +144,7 @@ const displayMenu = (rl, jsonData) => {
                 });
                 console.log(`Total Amount Due: $${roundToNearestPenny(totalAmountDue, 2)}`);
                 if (oneTimeChargesArePresent) {
-                    console.log(`Total Does Not Include the $${lateFee} late fee`);
+                    console.log(`This total does not include $${additionalCharges} additional one-time charges or past due balance.`);
                 }
                 setTimeout(() => {
                     displayMenu(rl, jsonData);
@@ -259,9 +259,9 @@ const calculateDifferenceAndAddToScottsBillLOL = jsonData => {
             scottsLine[0].total += diff;
         } else {
             if (oneTimeChargesArePresent) {
-                lateFee = diff;
+                additionalCharges = diff;
                 setTimeout(() => {
-                    console.log(`$${diff} late fee found`);
+                    console.log(`$${diff} of additional one-time charges found (late fee?). Please manually determine who to apply these charges to (probably Maranda).`);
                 }, 1000);
             } else {
                 console.log(`$${diff} discrepency found in bill!!`);
@@ -287,7 +287,7 @@ const getMultilineInput = (rl, prompt) => {
 
 const init = async rl => {
     try {
-        const displayTimeout = lateFee === null ? 1000 : 2000;
+        const displayTimeout = additionalCharges === null ? 1000 : 2000;
         const billText = await getMultilineInput(rl, 'Copy the "THIS BILL SUMMARY" section from the bill (on page 2) and paste it here, then press enter twice:');
         processText(billText)
 
